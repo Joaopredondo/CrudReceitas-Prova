@@ -9,22 +9,21 @@ const ReceitaSchema = new mongoose.Schema(
     tempoPreparo: {
       type: Number,
       required: true,
-      unique: true,
     },
     custoAproximado: {
       type: Number,
       required: true,
-      unique: true,
     },
-    ingredientes: {
-      type: String,
-      required: true,
-      unique: true,
-    },
+    ingredientes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Ingrediente'
+      }
+    ],
   },
   {
     timestamps: true,
   }
 );
 
-module.exports = mongoose.model('Receitas', ReceitaSchema);
+module.exports = mongoose.model('Receita', ReceitaSchema);

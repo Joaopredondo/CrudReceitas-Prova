@@ -9,9 +9,16 @@ import {
   Button,
   Stack,
   Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { Edit, Delete } from '@mui/icons-material';
+import { Edit, Delete, Visibility } from '@mui/icons-material';
 import FormularioReceita from './FormularioReceita';
 import axios from 'axios';
 
@@ -49,10 +56,14 @@ function ListaReceitas() {
   const [receitas, setReceitas] = useState([]);
   const [aberto, setAberto] = useState(false);
   const [receitaAtual, setReceitaAtual] = useState(null);
+  const [ingredientesAbertos, setIngredientesAbertos] = useState(false);
+  const [ingredientesAtuais, setIngredientesAtuais] = useState([]);
 
   const fetchReceitas = async () => {
     try {
+      console.log('Buscando receitas...');
       const response = await axios.get('http://localhost:5000/api/receitas');
+      console.log('Receitas recebidas:', response.data);
       setReceitas(response.data);
     } catch (error) {
       console.error('Erro ao buscar receitas:', error);
@@ -73,38 +84,39 @@ function ListaReceitas() {
     setReceitaAtual(null);
   };
 
+  const abrirIngredientes = (ingredientes) => {
+    setIngredientesAtuais(ingredientes);
+    setIngredientesAbertos(true);
+  };
+
+  const fecharIngredientes = () => {
+    setIngredientesAbertos(false);
+  };
+
   const adicionarOuEditarReceita = async (receita) => {
-    if (receita._id) {
-      try {
-        const response = await axios.put(
-          `http://localhost:5000/api/receitas/${receita._id}`,
-          receita
-        );
-        setReceitas(
-          receitas.map((r) => (r._id === response.data._id ? response.data : r))
-        );
-      } catch (error) {
-        console.error('Erro ao atualizar a receita:', error);
+    try {
+      let response;
+      if (receita._id) {
+        // eslint-disable-next-line
+        response = await axios.put(`http://localhost:5000/api/receitas/${receita._id}`, receita);
+      } else {
+        // eslint-disable-next-line
+        response = await axios.post('http://localhost:5000/api/receitas', receita);
       }
-    } else {
-      try {
-        const response = await axios.post(
-          'http://localhost:5000/api/receitas',
-          receita
-        );
-        setReceitas([response.data, ...receitas]);
-      } catch (error) {
-        console.error('Erro ao adicionar uma receita:', error);
-      }
+      await fetchReceitas();
+      fecharFormulario();
+    } catch (error) {
+      console.error('Erro ao adicionar/editar receita:', error);
+      const mensagemErro = error.response?.data?.message || 'Erro ao processar a receita. Tente novamente.';
+      alert(mensagemErro);
     }
-    fecharFormulario();
   };
 
   const excluirReceita = async (id) => {
     if (window.confirm('Tem certeza que deseja excluir esta receita?')) {
       try {
         await axios.delete(`http://localhost:5000/api/receitas/${id}`);
-        setReceitas(receitas.filter((u) => u._id !== id));
+        setReceitas(receitas.filter((r) => r._id !== id));
       } catch (error) {
         console.error('Erro ao excluir a receita:', error);
       }
@@ -123,31 +135,30 @@ function ListaReceitas() {
             color="primary"
             onClick={() => abrirFormulario()}
           >
-            Adicionar Receitas
+            Adicionar Receita
           </StyledButton>
         </Stack>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>
-                <strong>Nome</strong>
-              </TableCell>
-              <TableCell>
-                <strong>Tempo Preparo</strong>
-              </TableCell>
-              <TableCell>
-                <strong>Custo Aproximado</strong>
-              </TableCell>
-              <TableCell align = "center">
-                <strong>Ingredientes</strong>
-              </TableCell>
+              <TableCell align="center"><strong>Nome</strong></TableCell>
+              <TableCell align="center"><strong>Tempo Preparo</strong></TableCell>
+              <TableCell align="center"><strong>Custo Aproximado</strong></TableCell>
+              <TableCell align="center"><strong>Ingredientes</strong></TableCell>
+              <TableCell align="center"><strong>Ações</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {receitas.map((receita) => (
-              <StyledTableRow key={receita.id}>
-                <TableCell>{receita.nome}</TableCell>
-                <TableCell>{receita.email}</TableCell>
+              <StyledTableRow key={receita._id}>
+                <TableCell align="center">{receita.nome}</TableCell>
+                <TableCell align="center">{receita.tempoPreparo} min</TableCell>
+                <TableCell align="center">R$ {receita.custoAproximado.toFixed(2)}</TableCell>
+                <TableCell align="center">
+                  <IconButton onClick={() => abrirIngredientes(receita.ingredientes)}>
+                    <Visibility />
+                  </IconButton>
+                </TableCell>
                 <TableCell align="center">
                   <IconButton
                     sx={{ color: '#FFC107' }}
@@ -166,13 +177,31 @@ function ListaReceitas() {
             ))}
           </TableBody>
         </Table>
-        <FormularioReceita
-          aberto={aberto}
-          aoFechar={fecharFormulario}
-          aoSalvar={adicionarOuEditarReceita}
-          receita={receitaAtual}
-        />
+
+        {/* Dialog para exibir ingredientes */}
+        <Dialog open={ingredientesAbertos} onClose={fecharIngredientes}>
+          <DialogTitle>Ingredientes</DialogTitle>
+          <DialogContent>
+            <List>
+              {ingredientesAtuais.map((ingrediente, index) => (
+                <ListItem key={index}>
+                  <ListItemText primary={ingrediente.nome} />
+                </ListItem>
+              ))}
+            </List>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={fecharIngredientes}>Fechar</Button>
+          </DialogActions>
+        </Dialog>
+
       </StyledPaper>
+      <FormularioReceita
+        aberto={aberto}
+        aoFechar={fecharFormulario}
+        aoSalvar={adicionarOuEditarReceita}
+        receita={receitaAtual}
+      />
     </StyledContainer>
   );
 }

@@ -6,8 +6,12 @@ import {
   TextField,
   DialogActions,
   Button,
+  Typography,
+  Box,
+  IconButton,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import { Delete } from '@mui/icons-material';
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
     '& .MuiDialog-paper': {
@@ -16,20 +20,13 @@ const StyledDialog = styled(Dialog)(({ theme }) => ({
       backgroundColor: theme.palette.background.paper,
     },
   }));
-  
-  const StyledButton = styled(Button)(({ theme }) => ({
-    borderRadius: '25px',
-    padding: theme.spacing(1, 3),
-    textTransform: 'none',
-    fontWeight: 'bold',
-    color: theme.palette.getContrastText(theme.palette.primary.main),
-  }));
 
 function FormularioReceita({ aberto, aoFechar, aoSalvar, receita }) {
   const [nome, setNome] = useState('');
   const [tempoPreparo, setTempoPreparo] = useState('');
   const [custoAproximado, setCustoAproximado] = useState('');
-  const [ingredientes , setIngredientes] = useState('');
+  const [ingredientes, setIngredientes] = useState([]);
+  const [novoIngrediente, setNovoIngrediente] = useState('');
 
   useEffect(() => {
     if (aberto) {
@@ -37,25 +34,48 @@ function FormularioReceita({ aberto, aoFechar, aoSalvar, receita }) {
         setNome(receita.nome);
         setTempoPreparo(receita.tempoPreparo);
         setCustoAproximado(receita.custoAproximado);
-        setIngredientes(receita.ingredientes);
+        setIngredientes(receita.ingredientes || []);
       } else {
         setNome('');
         setTempoPreparo('');
         setCustoAproximado('');
-        setIngredientes('');
+        setIngredientes([]);
       }
     }
-  }, [receita,aberto]);
+  }, [receita, aberto]);
 
   const handleSubmit = () => {
+    if (!nome.trim() || !tempoPreparo || !custoAproximado || ingredientes.length === 0) {
+      alert('Por favor, preencha todos os campos e adicione pelo menos um ingrediente.');
+      return;
+    }
+
+    const ingredientesValidos = ingredientes.filter(ing => ing.nome && ing.nome.trim() !== '');
+    if (ingredientesValidos.length === 0) {
+      alert('Por favor, adicione pelo menos um ingrediente válido.');
+      return;
+    }
+
     const novaReceita = {
       _id: receita ? receita._id : null,
-      nome,
-      tempoPreparo,
-      custoAproximado,
-      ingredientes,
+      nome: nome.trim(),
+      tempoPreparo: parseInt(tempoPreparo),
+      custoAproximado: parseFloat(custoAproximado),
+      ingredientes: ingredientesValidos,
     };
+    console.log('Enviando receita:', JSON.stringify(novaReceita, null, 2));
     aoSalvar(novaReceita);
+  };
+
+  const addIngrediente = () => {
+    if (novoIngrediente.trim()) {
+      setIngredientes([...ingredientes, { nome: novoIngrediente.trim() }]);
+      setNovoIngrediente('');
+    }
+  };
+
+  const removeIngrediente = (index) => {
+    setIngredientes(ingredientes.filter((_, i) => i !== index));
   };
 
   return (
@@ -75,8 +95,8 @@ function FormularioReceita({ aberto, aoFechar, aoSalvar, receita }) {
         />
         <TextField
           margin="dense"
-          label="Tempo Preparo"
-          type="text"
+          label="Tempo Preparo (minutos)"
+          type="number"
           fullWidth
           variant="outlined"
           value={tempoPreparo}
@@ -86,31 +106,35 @@ function FormularioReceita({ aberto, aoFechar, aoSalvar, receita }) {
         <TextField
           margin="dense"
           label="Custo Aproximado"
-          type="text"
+          type="number"
           fullWidth
           variant="outlined"
           value={custoAproximado}
           onChange={(e) => setCustoAproximado(e.target.value)}
           sx={{ mt: 2 }}
         />
-        <TextField
-          margin="dense"
-          label="Ingredientes"
-          type="text"
-          fullWidth
-          variant="outlined"
-          value={ingredientes}
-          onChange={(e) => setIngredientes(e.target.value)}
-          sx={{ mt: 2 }}
-        />
+        <Typography variant="h6" sx={{ mt: 2 }}>Ingredientes</Typography>
+        {ingredientes.map((ingrediente, index) => (
+          <Box key={index} display="flex" alignItems="center" sx={{ mt: 1 }}>
+            <Typography>{ingrediente.nome}</Typography>
+            <IconButton onClick={() => removeIngrediente(index)}>
+              <Delete />
+            </IconButton>
+          </Box>
+        ))}
+        <Box display="flex" sx={{ mt: 2 }}>
+          <TextField
+            label="Novo Ingrediente"
+            value={novoIngrediente}
+            onChange={(e) => setNovoIngrediente(e.target.value)}
+            fullWidth
+          />
+          <Button onClick={addIngrediente} sx={{ ml: 1 }}>Adicionar</Button>
+        </Box>
       </DialogContent>
       <DialogActions>
-        <StyledButton onClick={aoFechar} color="secondary">
-          Cancelar
-        </StyledButton>
-        <StyledButton onClick={handleSubmit} color="primary" variant="contained">
-          {receita ? 'Salvar Alterações' : 'Adicionar'}
-        </StyledButton>
+        <Button onClick={aoFechar}>Cancelar</Button>
+        <Button onClick={handleSubmit}>Salvar</Button>
       </DialogActions>
     </StyledDialog>
   );
